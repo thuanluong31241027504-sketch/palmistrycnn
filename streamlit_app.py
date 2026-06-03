@@ -44,6 +44,15 @@ st.markdown("""
         100% { text-shadow: 0 0 3px #ff00ff, 0 0 6px #ff00ff; color: #ff00ff; }
     }
     
+    @keyframes rainbow-line {
+        0% { background-color: #ff00ff; box-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff; }
+        20% { background-color: #00ffff; box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; }
+        40% { background-color: #ff6600; box-shadow: 0 0 5px #ff6600, 0 0 10px #ff6600; }
+        60% { background-color: #ffff00; box-shadow: 0 0 5px #ffff00, 0 0 10px #ffff00; }
+        80% { background-color: #00ff00; box-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00; }
+        100% { background-color: #ff00ff; box-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff; }
+    }
+    
     .blinking-cursor {
         animation: blink 1s step-end infinite;
         display: inline-block;
@@ -53,9 +62,17 @@ st.markdown("""
     .main-title {
         font-family: 'Courier New', monospace;
         font-size: 2.5rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         font-weight: normal;
         animation: neon 3s infinite;
+    }
+    
+    .rainbow-hr {
+        height: 2px;
+        width: 100%;
+        margin: 20px 0;
+        animation: rainbow-line 1s infinite;
+        border: none;
     }
     
     .instruction {
@@ -135,19 +152,6 @@ st.markdown("""
         letter-spacing: 3px;
         text-shadow: 0 0 5px #00ffff;
         animation: neonText 3s infinite;
-    }
-    
-    .camera-box {
-        border: 2px solid #ff00ff;
-        padding: 15px;
-        background-color: #1a0b2e;
-        box-shadow: 0 0 10px #ff00ff;
-        border-radius: 0px;
-    }
-    
-    .stImage {
-        border: 1px solid #00ffff;
-        box-shadow: 0 0 5px #00ffff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -351,6 +355,9 @@ DISPLAY_NAMES = {
 # ==================== GIAO DIỆN CHÍNH ====================
 st.markdown('<div class="main-title">> palmistry analysis<span class="blinking-cursor">_</span></div>', unsafe_allow_html=True)
 
+# Rainbow line
+st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
+
 # Layout 2 cột
 col_left, col_right = st.columns([0.5, 0.5])
 
@@ -365,6 +372,9 @@ with col_right:
         <div class="instruction-line">> doc ket qua giai ma ve tinh cach va van menh</div>
     </div>
     """, unsafe_allow_html=True)
+
+# Rainbow line
+st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
 
 if camera_image:
     image = Image.open(camera_image)
@@ -439,3 +449,6 @@ if camera_image:
                     <div class="result-sub">{PREDICTIONS_TEXT['fortune_class'][val][1]}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+# Rainbow line
+st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
