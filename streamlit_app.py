@@ -17,7 +17,7 @@ st.markdown("""
     footer {visibility: hidden;}
     
     .stApp {
-        background-color: #ffffff;
+        background-color: #1a0b2e;
     }
     
     * {
@@ -29,6 +29,21 @@ st.markdown("""
         51%, 100% { opacity: 0; }
     }
     
+    @keyframes neon {
+        0% { text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff; color: #ff00ff; }
+        25% { text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #00ffff; color: #00ffff; }
+        50% { text-shadow: 0 0 5px #ff6600, 0 0 10px #ff6600, 0 0 20px #ff6600; color: #ff6600; }
+        75% { text-shadow: 0 0 5px #ffff00, 0 0 10px #ffff00, 0 0 20px #ffff00; color: #ffff00; }
+        100% { text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff; color: #ff00ff; }
+    }
+    
+    @keyframes neonText {
+        0% { text-shadow: 0 0 3px #ff00ff, 0 0 6px #ff00ff; color: #ff00ff; }
+        33% { text-shadow: 0 0 3px #00ffff, 0 0 6px #00ffff; color: #00ffff; }
+        66% { text-shadow: 0 0 3px #ff6600, 0 0 6px #ff6600; color: #ff6600; }
+        100% { text-shadow: 0 0 3px #ff00ff, 0 0 6px #ff00ff; color: #ff00ff; }
+    }
+    
     .blinking-cursor {
         animation: blink 1s step-end infinite;
         display: inline-block;
@@ -38,82 +53,101 @@ st.markdown("""
     .main-title {
         font-family: 'Courier New', monospace;
         font-size: 2.5rem;
-        color: #000000;
         margin-bottom: 2rem;
         font-weight: normal;
+        animation: neon 3s infinite;
     }
     
     .instruction {
         font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: #666666;
-        line-height: 1.8;
+        font-size: 0.8rem;
+        line-height: 2;
         text-align: left;
     }
     
-    .camera-container {
-        border: 2px solid #000000;
-        padding: 20px;
-        background-color: #fafafa;
+    .instruction-line {
+        animation: neonText 3s infinite;
+        margin: 5px 0;
     }
     
     .stButton > button {
-        background-color: #000000 !important;
-        color: #ffffff !important;
-        border: none !important;
+        background-color: #2d1b4e !important;
+        color: #00ffff !important;
+        border: 1px solid #00ffff !important;
         border-radius: 0px !important;
         font-family: 'Courier New', monospace !important;
         font-weight: bold !important;
         padding: 0.5rem 1rem !important;
         width: 100% !important;
+        box-shadow: 0 0 5px #00ffff;
     }
     
     .stButton > button:hover {
-        background-color: #333333 !important;
-        color: #ffffff !important;
+        background-color: #3d2b5e !important;
+        color: #ff00ff !important;
+        border: 1px solid #ff00ff !important;
+        box-shadow: 0 0 10px #ff00ff;
     }
     
     .result-box {
-        border: 1px solid #000000;
+        border: 1px solid #ff00ff;
         padding: 15px;
         margin-top: 15px;
-        background-color: #ffffff;
+        background-color: #1a0b2e;
+        box-shadow: 0 0 5px #ff00ff;
     }
     
     .result-title {
-        color: #000000;
+        color: #00ffff;
         font-size: 0.85rem;
         margin-bottom: 8px;
         font-weight: bold;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 3px #00ffff;
     }
     
     .result-content {
-        color: #333333;
+        color: #ffffff;
         font-size: 0.75rem;
         line-height: 1.5;
     }
     
     .result-sub {
-        color: #666666;
+        color: #ff6600;
         font-size: 0.7rem;
         margin-top: 8px;
-        font-style: italic;
+        text-shadow: 0 0 2px #ff6600;
     }
     
     hr {
-        border-color: #000000;
+        border-color: #ff00ff;
         margin: 20px 0;
+        box-shadow: 0 0 3px #ff00ff;
     }
     
     .section-title {
         font-size: 1rem;
         text-align: center;
-        color: #000000;
+        color: #00ffff;
         margin: 20px 0;
         font-weight: bold;
-        letter-spacing: 2px;
+        letter-spacing: 3px;
+        text-shadow: 0 0 5px #00ffff;
+        animation: neonText 3s infinite;
+    }
+    
+    .camera-box {
+        border: 2px solid #ff00ff;
+        padding: 15px;
+        background-color: #1a0b2e;
+        box-shadow: 0 0 10px #ff00ff;
+        border-radius: 0px;
+    }
+    
+    .stImage {
+        border: 1px solid #00ffff;
+        box-shadow: 0 0 5px #00ffff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -321,16 +355,14 @@ st.markdown('<div class="main-title">> palmistry analysis<span class="blinking-c
 col_left, col_right = st.columns([0.5, 0.5])
 
 with col_left:
-    st.markdown('<div class="camera-container">', unsafe_allow_html=True)
     camera_image = st.camera_input("", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with col_right:
     st.markdown("""
     <div class="instruction">
-        > chup anh long ban tay du anh sang, de trong khung hinh_<br>
-        > nhan phan tich - app tu dong phan tich 9 chi so_<br>
-        > doc ket qua giai ma ve tinh cach va van menh_
+        <div class="instruction-line">> chup anh long ban tay du anh sang, de trong khung hinh</div>
+        <div class="instruction-line">> nhan phan tich - app tu dong phan tich cac chi so</div>
+        <div class="instruction-line">> doc ket qua giai ma ve tinh cach va van menh</div>
     </div>
     """, unsafe_allow_html=True)
 
