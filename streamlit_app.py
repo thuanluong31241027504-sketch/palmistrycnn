@@ -2,14 +2,17 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+import time
+import os
 
+# Cấu hình trang
 st.set_page_config(
-    page_title="Palmistry CNN",
+    page_title="Palmistry AI",
     page_icon="🔮",
     layout="centered"
 )
 
-# Custom CSS
+# Custom CSS (giữ nguyên của bạn)
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
@@ -90,7 +93,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load model
+# Load model TFLite
 @st.cache_resource
 def load_model():
     try:
@@ -106,7 +109,7 @@ if interpreter is None:
     st.error("⚠️ model not found. Please upload palmistry.tflite")
     st.stop()
 
-# Get model info
+# Lấy thông tin model
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 input_shape = input_details[0]['shape']
@@ -116,6 +119,7 @@ num_classes = output_details[0]['shape'][1]
 # Class names (cập nhật theo model của bạn)
 CLASS_NAMES = [f"Class_{i}" for i in range(num_classes)]
 
+# ========== GIAO DIỆN CHÍNH (GIỮ NGUYÊN CỦA BẠN) ==========
 st.markdown("""
 <div class="page-title">
     > palmistry analysis
@@ -132,6 +136,7 @@ if camera_image:
     
     if st.button("> analyze"):
         with st.spinner("processing..."):
+            # Xử lý ảnh
             if image.mode == 'RGBA':
                 image = image.convert('RGB')
             
@@ -139,6 +144,7 @@ if camera_image:
             img_array = np.array(img).astype(np.float32) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
             
+            # Dự đoán
             interpreter.set_tensor(input_details[0]['index'], img_array)
             interpreter.invoke()
             predictions = interpreter.get_tensor(output_details[0]['index'])[0]
@@ -160,6 +166,7 @@ if camera_image:
                 prob = float(predictions[idx])
                 st.progress(prob, text=f"{i}. {CLASS_NAMES[idx]} - {prob:.2%}")
 
+# ========== HƯỚNG DẪN (GIỮ NGUYÊN CỦA BẠN) ==========
 st.markdown("""
 <div class="instruction-container">
     <div class="instruction">
