@@ -1,11 +1,9 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as tf
-import time
+import onnxruntime as ort
 import os
 
-# Cấu hình trang
 st.set_page_config(
     page_title="Palmistry AI",
     page_icon="🔮",
@@ -93,33 +91,29 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load model TFLite
+# Load model ONNX
 @st.cache_resource
 def load_model():
-    try:
-        interpreter = tf.lite.Interpreter(model_path="palmistry.tflite")
-        interpreter.allocate_tensors()
-        return interpreter
-    except:
-        return None
+    if os.path.exists("palmistry.onnx"):
+        return ort.InferenceSession("palmistry.onnx")
+    return None
 
-interpreter = load_model()
+session = load_model()
 
-if interpreter is None:
-    st.error("⚠️ model not found. Please upload palmistry.tflite")
+if session is None:
+    st.error("⚠️ model not found. Please upload palmistry.onnx")
     st.stop()
 
 # Lấy thông tin model
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-input_shape = input_details[0]['shape']
+input_info = session.get_inputs()[0]
+input_shape = input_info.shape
 target_size = (input_shape[1], input_shape[2])
-num_classes = output_details[0]['shape'][1]
+num_classes = session.get_outputs()[0].shape[1]
 
 # Class names (cập nhật theo model của bạn)
 CLASS_NAMES = [f"Class_{i}" for i in range(num_classes)]
 
-# ========== GIAO DIỆN CHÍNH (GIỮ NGUYÊN CỦA BẠN) ==========
+# Giao diện chính
 st.markdown("""
 <div class="page-title">
     > palmistry analysis
@@ -136,7 +130,6 @@ if camera_image:
     
     if st.button("> analyze"):
         with st.spinner("processing..."):
-            # Xử lý ảnh
             if image.mode == 'RGBA':
                 image = image.convert('RGB')
             
@@ -144,13 +137,11 @@ if camera_image:
             img_array = np.array(img).astype(np.float32) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
             
-            # Dự đoán
-            interpreter.set_tensor(input_details[0]['index'], img_array)
-            interpreter.invoke()
-            predictions = interpreter.get_tensor(output_details[0]['index'])[0]
+            input_name = input_info.name
+            predictions = session.run(None, {input_name: img_array})[0]
             
-            idx = np.argmax(predictions)
-            confidence = float(predictions[idx])
+            idx = np.argmax(predictions[0])
+            confidence = float(predictions[0][idx])
             
             st.markdown(f"""
             <div class="result-box">
@@ -161,12 +152,12 @@ if camera_image:
             
             st.markdown("---")
             st.markdown("<p style='color:#c084fc;'>top predictions:</p>", unsafe_allow_html=True)
-            top3_idx = np.argsort(predictions)[-3:][::-1]
+            top3_idx = np.argsort(predictions[0])[-3:][::-1]
             for i, idx in enumerate(top3_idx, 1):
-                prob = float(predictions[idx])
+                prob = float(predictions[0][idx])
                 st.progress(prob, text=f"{i}. {CLASS_NAMES[idx]} - {prob:.2%}")
 
-# ========== HƯỚNG DẪN (GIỮ NGUYÊN CỦA BẠN) ==========
+# Hướng dẫn
 st.markdown("""
 <div class="instruction-container">
     <div class="instruction">
