@@ -137,12 +137,6 @@ st.markdown("""
         text-shadow: 0 0 2px #ff6600;
     }
     
-    hr {
-        border-color: #ff00ff;
-        margin: 20px 0;
-        box-shadow: 0 0 3px #ff00ff;
-    }
-    
     .section-title {
         font-size: 1rem;
         text-align: center;
@@ -355,7 +349,7 @@ DISPLAY_NAMES = {
 # ==================== GIAO DIỆN CHÍNH ====================
 st.markdown('<div class="main-title">> palmistry analysis<span class="blinking-cursor">_</span></div>', unsafe_allow_html=True)
 
-# Rainbow line
+# Rainbow line - 1 line thoi
 st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
 
 # Layout 2 cột
@@ -368,13 +362,10 @@ with col_right:
     st.markdown("""
     <div class="instruction">
         <div class="instruction-line">> chup anh long ban tay du anh sang, de trong khung hinh</div>
-        <div class="instruction-line">> nhan phan tich app tu dong phan tich cac chi so</div>
+        <div class="instruction-line">> nhan phan tich - app tu dong phan tich cac chi so</div>
         <div class="instruction-line">> doc ket qua giai ma ve tinh cach va van menh</div>
     </div>
     """, unsafe_allow_html=True)
-
-# Rainbow line
-st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
 
 if camera_image:
     image = Image.open(camera_image)
@@ -449,6 +440,3 @@ if camera_image:
                     <div class="result-sub">{PREDICTIONS_TEXT['fortune_class'][val][1]}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
-# Rainbow line
-st.markdown('<div class="rainbow-hr"></div>', unsafe_allow_html=True)
