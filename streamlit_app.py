@@ -361,7 +361,7 @@ with col_right:
     st.markdown("""
     <div class="instruction">
         <div class="instruction-line">> chup anh long ban tay du anh sang, de trong khung hinh</div>
-        <div class="instruction-line">> nhan phan tich - app tu dong phan tich cac chi so</div>
+        <div class="instruction-line">> nhan phan tich app tu dong phan tich cac chi so</div>
         <div class="instruction-line">> doc ket qua giai ma ve tinh cach va van menh</div>
     </div>
     """, unsafe_allow_html=True)
