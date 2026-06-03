@@ -1,15 +1,11 @@
 import streamlit as st
 import numpy as np
-import cv2
-from PIL import Image
-import onnxruntime as ort
-import os
-import re
-from collections import Counter
+from PIL import Image, ImageFilter
+import time
 
 st.set_page_config(
-    page_title="Palmistry AI - Phân Tích Chỉ Tay",
-    page_icon="🔮",
+    page_title="Palmistry Analysis",
+    page_icon="",
     layout="wide"
 )
 
@@ -21,133 +17,142 @@ st.markdown("""
     footer {visibility: hidden;}
     
     .stApp {
-        background-color: #0a0a0a;
+        background-color: #ffffff;
     }
     
     * {
-        font-family: 'Courier New', monospace;
+        font-family: 'Courier New', 'SF Mono', monospace;
     }
     
     @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
     }
     
-    .blinking-underscore {
+    .blinking-cursor {
         animation: blink 1s step-end infinite;
         display: inline-block;
-        width: 8px;
-        margin-left: 2px;
+        width: 10px;
     }
     
-    .static-underscore {
-        display: inline-block;
-        width: 8px;
-        margin-left: 2px;
-        opacity: 1;
-    }
-    
-    .page-title {
+    .main-title {
         font-family: 'Courier New', monospace;
-        font-size: 1.2rem;
-        text-align: center;
-        color: #c084fc;
-        margin-top: 40px;
-        margin-bottom: 40px;
+        font-size: 2.5rem;
+        color: #000000;
+        margin-bottom: 2rem;
+        font-weight: normal;
     }
     
     .instruction {
         font-family: 'Courier New', monospace;
-        font-size: 0.7rem;
-        color: #8b5cf6;
-        margin-top: 2rem;
+        font-size: 0.75rem;
+        color: #666666;
         line-height: 1.8;
-        display: inline-block;
         text-align: left;
     }
     
-    .instruction-container {
-        display: flex;
-        justify-content: center;
-        margin-top: 2rem;
+    .camera-container {
+        border: 2px solid #000000;
+        padding: 20px;
+        background-color: #fafafa;
     }
     
     .stButton > button {
-        background: transparent;
-        color: #c084fc !important;
-        border: 1px solid #c084fc !important;
+        background-color: #000000 !important;
+        color: #ffffff !important;
+        border: none !important;
         border-radius: 0px !important;
         font-family: 'Courier New', monospace !important;
+        font-weight: bold !important;
+        padding: 0.5rem 1rem !important;
         width: 100% !important;
     }
     
     .stButton > button:hover {
-        background: #c084fc20 !important;
+        background-color: #333333 !important;
+        color: #ffffff !important;
     }
     
     .result-box {
-        border: 1px solid #c084fc;
-        padding: 20px;
-        margin-top: 20px;
-        background-color: #0a0a0a;
-        border-radius: 0px;
+        border: 1px solid #000000;
+        padding: 15px;
+        margin-top: 15px;
+        background-color: #ffffff;
     }
     
     .result-title {
-        color: #c084fc;
-        font-size: 1rem;
-        margin-bottom: 10px;
+        color: #000000;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
         font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
     .result-content {
-        color: #ffffff;
-        font-size: 0.8rem;
+        color: #333333;
+        font-size: 0.75rem;
         line-height: 1.5;
     }
     
-    .probability-bar {
-        background-color: #1a1a1a;
-        border-radius: 0px;
-        margin: 5px 0;
-    }
-    
-    .probability-fill {
-        background-color: #c084fc;
-        padding: 4px;
-        text-align: right;
-        color: #0a0a0a;
+    .result-sub {
+        color: #666666;
         font-size: 0.7rem;
+        margin-top: 8px;
+        font-style: italic;
     }
     
     hr {
-        border-color: #c084fc30;
+        border-color: #000000;
         margin: 20px 0;
+    }
+    
+    .section-title {
+        font-size: 1rem;
+        text-align: center;
+        color: #000000;
+        margin: 20px 0;
+        font-weight: bold;
+        letter-spacing: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== HÀM TRÍCH XUẤT ĐẶC TRƯNG ====================
-def extract_image_features(img_array):
-    """Trích xuất các đặc trưng từ ảnh để phân tích"""
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    hsv = cv2.cvtColor(img_array, cv2.COLOR_RGB2HSV)
+def extract_image_features_pil(img):
+    gray = img.convert('L')
+    gray_array = np.array(gray)
     
-    brightness = np.mean(gray) / 255.0
-    contrast = np.std(gray) / 255.0
-    edges = cv2.Canny(gray, 30, 100)
-    edge_density = np.mean(edges) / 255.0
+    hsv = img.convert('HSV')
+    hsv_array = np.array(hsv)
     
-    hue_mean = np.mean(hsv[:,:,0]) / 180.0
-    sat_mean = np.mean(hsv[:,:,1]) / 255.0
+    brightness = np.mean(gray_array) / 255.0
+    contrast = np.std(gray_array) / 255.0
     
-    blur = cv2.GaussianBlur(gray, (5,5), 0)
-    texture = np.std(gray.astype(int) - blur.astype(int)) / 128.0
+    edges = gray.filter(ImageFilter.FIND_EDGES)
+    edges_array = np.array(edges)
+    edge_density = np.mean(edges_array) / 255.0
+    
+    if len(hsv_array.shape) == 3:
+        hue_mean = np.mean(hsv_array[:,:,0]) / 255.0
+        sat_mean = np.mean(hsv_array[:,:,1]) / 255.0
+    else:
+        hue_mean = 0.5
+        sat_mean = 0.5
+    
+    blur = gray.filter(ImageFilter.BLUR)
+    blur_array = np.array(blur)
+    texture = np.std(gray_array.astype(int) - blur_array.astype(int)) / 128.0
     texture = float(np.clip(texture, 0, 1))
     
-    h, w = gray.shape
-    center = gray[h//4:3*h//4, w//4:3*w//4]
-    center_edge = np.mean(cv2.Canny(center, 30, 100)) / 255.0
+    h, w = gray_array.shape
+    center = gray_array[h//4:3*h//4, w//4:3*w//4]
+    
+    center_img = Image.fromarray(center)
+    center_edges = center_img.filter(ImageFilter.FIND_EDGES)
+    center_edges_array = np.array(center_edges)
+    center_edge = np.mean(center_edges_array) / 255.0
+    
     center_var = float(np.var(center) / (255.0**2))
     
     return {
@@ -170,8 +175,6 @@ def to_class(value, low, high):
     return 2
 
 def analyze_palm(features):
-    """Phân tích 9 đặc tính từ đặc trưng ảnh"""
-    # Ngưỡng mặc định (có thể điều chỉnh sau khi train model)
     thr = {
         'edge_density': {'low': 0.15, 'high': 0.35},
         'center_edge': {'low': 0.12, 'high': 0.30},
@@ -183,7 +186,6 @@ def analyze_palm(features):
         'hue': {'low': 0.25, 'high': 0.50},
     }
     
-    # Tính các chỉ số
     life_line = to_class(
         features['edge_density'] * 0.6 + features['center_edge'] * 0.4,
         thr['edge_density']['low'] * 0.6 + thr['center_edge']['low'] * 0.4,
@@ -254,161 +256,154 @@ def analyze_palm(features):
 # ==================== TEXT HIỂN THỊ ====================
 PREDICTIONS_TEXT = {
     'heart_line': {
-        0: ["▶ Đường Tâm Đạo của bạn khá mờ và ngắn", "Bạn có xu hướng giấu kín cảm xúc, ít khi thể hiện tình cảm ra bên ngoài. Cần nhiều thời gian để thực sự tin tưởng và mở lòng."],
-        1: ["▶ Đường Tâm Đạo ở mức trung bình, rõ nét vừa phải", "Bạn biết cân bằng giữa lý trí và tình cảm. Hòa đồng, thân thiện nhưng vẫn giữ được giới hạn cần thiết."],
-        2: ["▶ Đường Tâm Đạo của bạn rất sâu và rõ nét", "Bạn là người cực kỳ giàu tình cảm, nồng nhiệt và chân thành. Luôn hết mình vì người mình yêu thương."]
+        0: ["duong tam dao mo va ngan", "ban co xu huong giau kin cam xuc, it khi the hien tinh cam ra ben ngoai."],
+        1: ["duong tam dao trung binh", "ban biet can bang giua ly tri va tinh cam. hoa dong, than thien."],
+        2: ["duong tam dao sau va ro net", "ban la nguoi cuc ky giau tinh cam, nong nhiet va chan thanh."]
     },
     'head_line': {
-        0: ["▶ Đường Trí Đạo của bạn khá ngắn hoặc mờ", "Bạn làm việc thiên về trực giác và bản năng hơn logic. Thích những gì đơn giản, đi thẳng vào vấn đề."],
-        1: ["▶ Đường Trí Đạo ở mức trung bình và khá liền mạch", "Bạn có lối tư duy thực tế, suy nghĩ thấu đáo trước khi làm. Khả năng tiếp thu và giải quyết vấn đề tốt."],
-        2: ["▶ Đường Trí Đạo của bạn rất sâu, rõ và dài", "Bạn sở hữu trí tuệ sắc sảo, tư duy phân tích logic tuyệt vời. Có góc nhìn cực kỳ độc đáo."]
+        0: ["duong tri dao ngan hoac mo", "ban lam viec thien ve truc giac va ban nang hon logic."],
+        1: ["duong tri dao trung binh", "ban co loi tu duy thuc te, suy nghi thau dao truoc khi lam."],
+        2: ["duong tri dao sau ro va dai", "ban so huu tri tue sac sao, tu duy phan tich logic tuyet voi."]
     },
     'life_line': {
-        0: ["▶ Đường Sinh Đạo của bạn có phần mờ và ngắn", "Thể trạng nhạy cảm với sự thay đổi. Cần chú ý nghỉ ngơi và tránh làm việc quá sức."],
-        1: ["▶ Đường Sinh Đạo hiện lên rõ ràng ở mức trung bình", "Sức khỏe và sinh lực khá tốt và ổn định. Có khả năng phục hồi nhanh sau mệt mỏi."],
-        2: ["▶ Đường Sinh Đạo của bạn rất sâu, dài và liền mạch", "Bạn sở hữu nguồn sinh lực dồi dào và sức đề kháng tuyệt vời. Luôn tràn đầy năng lượng."]
+        0: ["duong sinh dao mo va ngan", "can chu y nghi ngoi va tranh lam viec qua suc."],
+        1: ["duong sinh dao trung binh", "suc khoe va sinh luc kha tot va on dinh."],
+        2: ["duong sinh dao sau dai va lien mach", "ban so huu nguon sinh luc doi dao va suc de khang tuyet voi."]
     },
     'huong_ngoai': {
-        0: ["▶ Hướng Ngoại: Mức độ thấp", "Bạn mang đậm nét hướng nội, tìm thấy năng lượng khi ở một mình. Tỏa sáng trong các công việc độc lập, cần sự tập trung."],
-        1: ["▶ Hướng Ngoại: Mức độ trung bình", "Bạn là Ambivert chính hiệu. Linh hoạt trong giao tiếp, thích nghi tốt với nhiều môi trường khác nhau."],
-        2: ["▶ Hướng Ngoại: Mức độ cao", "Bạn là tâm điểm của sự chú ý, tràn đầy năng lượng khi giao tiếp. Khả năng ăn nói lưu loát, tự tin."]
+        0: ["huong ngoai: thap", "ban mang dam net huong noi, toa sang trong cong viec doc lap."],
+        1: ["huong ngoai: trung binh", "ban la ambivert, linh hoat trong giao tiep, thich nghi tot."],
+        2: ["huong ngoai: cao", "ban la tam diem, tran day nang luong khi giao tiep, tu tin."]
     },
     'lanh_dao': {
-        0: ["▶ Lãnh Đạo: Mức độ thấp", "Bạn thích làm người hỗ trợ hơn là người đứng đầu. Cảm thấy thoải mái khi được giao nhiệm vụ cụ thể."],
-        1: ["▶ Lãnh Đạo: Mức độ trung bình", "Bạn có tiềm năng lãnh đạo khá. Trong tình huống cần thiết, có thể đứng lên dẫn dắt đội nhóm."],
-        2: ["▶ Lãnh Đạo: Mức độ cao", "Tố chất Lãnh đạo cực kỳ mạnh mẽ! Bạn có tầm nhìn xa, sự quyết đoán và khí chất thu hút người khác."]
+        0: ["lanh dao: thap", "ban thich lam nguoi ho tro hon la nguoi dung dau."],
+        1: ["lanh dao: trung binh", "ban co tiem nang lanh dao, co the dan dat doi nhom khi can."],
+        2: ["lanh dao: cao", "to chat lanh dao manh me ban co tam nhin xa va su quyet doan."]
     },
     'noi_tam': {
-        0: ["▶ Nội Tâm: Mức độ thấp", "Bạn sống hướng ra bên ngoài, có gì nói đó. Ít khi tự dằn vặt hay suy nghĩ quá nhiều về quá khứ."],
-        1: ["▶ Nội Tâm: Mức độ trung bình", "Đời sống nội tâm phong phú và cân bằng. Biết cách tự phản tỉnh nhưng không bị mắc kẹt trong suy nghĩ tiêu cực."],
-        2: ["▶ Nội Tâm: Mức độ cao", "Đời sống nội tâm cực kỳ sâu sắc! Bạn nhạy cảm, hay suy nghĩ và có những chiêm nghiệm triết lý về cuộc đời."]
+        0: ["noi tam: thap", "ban song huong ngoai, it khi suy nghi nhieu ve qua khu."],
+        1: ["noi tam: trung binh", "doi song noi tam phong phu, biet tu phan tinh ban than."],
+        2: ["noi tam: cao", "doi song noi tam cuc ky sau sac, nhay cam va hay suy nghi."]
     },
     'sang_tao': {
-        0: ["▶ Sáng Tạo: Mức độ cơ bản", "Bạn tuân thủ nguyên tắc, thích làm việc theo quy trình. Giỏi duy trì và tối ưu hệ thống."],
-        1: ["▶ Sáng Tạo: Mức độ tốt", "Bạn có thể đưa ra giải pháp cải tiến hiệu quả. Biết áp dụng sáng tạo vào đúng thời điểm."],
-        2: ["▶ Sáng Tạo: Mức độ cao", "Tư duy Sáng tạo bùng nổ! Bạn luôn nhìn thế giới qua lăng kính khác biệt, ý tưởng độc đáo và mới lạ."]
+        0: ["sang tao: co ban", "ban tuan thu nguyen tac, thich lam viec theo quy trinh."],
+        1: ["sang tao: tot", "ban co the dua ra giai phap cai tien hieu qua."],
+        2: ["sang tao: cao", "tu duy sang tao bung no y tuong doc dao va moi la."]
     },
     'diem_tinh': {
-        0: ["▶ Điềm Tĩnh: Mức độ thấp", "Bạn dễ xúc động và phản ứng mạnh trước tình huống bất ngờ. Cần học cách kiểm soát cảm xúc."],
-        1: ["▶ Điềm Tĩnh: Mức độ khá", "Trong phần lớn tình huống, bạn giữ được thái độ hòa nhã, bình tĩnh. Biết cách kiểm soát cảm xúc tốt."],
-        2: ["▶ Điềm Tĩnh: Mức độ cao", "Bạn sở hữu sự Điềm tĩnh đến kinh ngạc! Khả năng kiểm soát cảm xúc và giữ bình tĩnh dưới áp lực là vũ khí lợi hại."]
+        0: ["diem tinh: thap", "ban de xuc dong, can hoc cach kiem soat cam xuc."],
+        1: ["diem tinh: kha", "ban giu duoc thai do binh tinh trong hầu hết tinh huong."],
+        2: ["diem tinh: cao", "kha nang kiem soat cam xuc va giu binh tinh la vu khi loi hai."]
     },
     'fortune_class': {
-        0: ["▶ Vận May: Mức độ Bình thường", "Hãy kiên nhẫn và tiếp tục nỗ lực. Cơ hội tốt sẽ đến khi bạn sẵn sàng."],
-        1: ["▶ Vận May: Mức độ Tốt", "Đây là thời điểm thuận lợi để thực hiện các kế hoạch. Hãy nắm bắt cơ hội để tiến lên."],
-        2: ["▶ Vận May: Mức độ Rất Tốt", "Chúc mừng! Mọi việc đều hanh thông và có nhiều cơ hội lớn đang chờ đón bạn."]
+        0: ["van may: binh thuong", "hay kien nhan, co hoi tot se den khi ban san sang."],
+        1: ["van may: tot", "thoi diem thuan loi de thuc hien cac ke hoach cua ban."],
+        2: ["van may: rat tot", "moi viec deu hanh thong, nhieu co hoi lon dang cho don."]
     }
 }
 
-# Tên hiển thị
 DISPLAY_NAMES = {
-    'heart_line': '💖 Đường Tâm Đạo',
-    'head_line': '🧠 Đường Trí Đạo',
-    'life_line': '🌿 Đường Sinh Đạo',
-    'huong_ngoai': '🌐 Hướng Ngoại',
-    'lanh_dao': '⚡ Lãnh Đạo',
-    'noi_tam': '🎭 Nội Tâm',
-    'sang_tao': '✨ Sáng Tạo',
-    'diem_tinh': '☯️ Điềm Tĩnh',
-    'fortune_class': '🍀 Vận May'
+    'heart_line': 'tam dao',
+    'head_line': 'tri dao',
+    'life_line': 'sinh dao',
+    'huong_ngoai': 'huong ngoai',
+    'lanh_dao': 'lanh dao',
+    'noi_tam': 'noi tam',
+    'sang_tao': 'sang tao',
+    'diem_tinh': 'diem tinh',
+    'fortune_class': 'van may'
 }
 
 # ==================== GIAO DIỆN CHÍNH ====================
-st.markdown("""
-<div class="page-title">
-    > palmistry analysis
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="main-title">> palmistry analysis<span class="blinking-cursor">_</span></div>', unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+# Layout 2 cột
+col_left, col_right = st.columns([0.5, 0.5])
+
+with col_left:
+    st.markdown('<div class="camera-container">', unsafe_allow_html=True)
     camera_image = st.camera_input("", label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col_right:
+    st.markdown("""
+    <div class="instruction">
+        > chup anh long ban tay du anh sang, de trong khung hinh_<br>
+        > nhan phan tich - app tu dong phan tich 9 chi so_<br>
+        > doc ket qua giai ma ve tinh cach va van menh_
+    </div>
+    """, unsafe_allow_html=True)
 
 if camera_image:
     image = Image.open(camera_image)
-    st.image(image, caption="", width=280)
     
-    if st.button("> analyze"):
-        with st.spinner("Đang phân tích..."):
-            # Xử lý ảnh
-            if image.mode == 'RGBA':
-                image = image.convert('RGB')
-            
-            img_array = np.array(image)
-            
-            # Trích xuất đặc trưng
-            features = extract_image_features(img_array)
-            
-            # Phân tích
-            results = analyze_palm(features)
-            
-            # Hiển thị kết quả
-            st.markdown("---")
-            st.markdown('<p style="color:#c084fc; text-align:center; font-size:1rem;">📜 KẾT QUẢ PHÂN TÍCH</p>', unsafe_allow_html=True)
-            
-            # Hiển thị 3 đường chỉ tay chính
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                val = results['heart_line']
+    with col_left:
+        st.image(image, caption="", width=250)
+        
+        if st.button("> phan tich"):
+            with st.spinner("dang xu ly..."):
+                if image.mode == 'RGBA':
+                    image = image.convert('RGB')
+                
+                features = extract_image_features_pil(image)
+                results = analyze_palm(features)
+                
+                # Hien thi ket qua
+                st.markdown('<div class="section-title">/ ket qua phan tich</div>', unsafe_allow_html=True)
+                
+                # 3 duong chi tay chinh
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    val = results['heart_line']
+                    st.markdown(f"""
+                    <div class="result-box">
+                        <div class="result-title">/ {DISPLAY_NAMES['heart_line']}</div>
+                        <div class="result-content">{PREDICTIONS_TEXT['heart_line'][val][0]}</div>
+                        <div class="result-sub">{PREDICTIONS_TEXT['heart_line'][val][1]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_b:
+                    val = results['head_line']
+                    st.markdown(f"""
+                    <div class="result-box">
+                        <div class="result-title">/ {DISPLAY_NAMES['head_line']}</div>
+                        <div class="result-content">{PREDICTIONS_TEXT['head_line'][val][0]}</div>
+                        <div class="result-sub">{PREDICTIONS_TEXT['head_line'][val][1]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_c:
+                    val = results['life_line']
+                    st.markdown(f"""
+                    <div class="result-box">
+                        <div class="result-title">/ {DISPLAY_NAMES['life_line']}</div>
+                        <div class="result-content">{PREDICTIONS_TEXT['life_line'][val][0]}</div>
+                        <div class="result-sub">{PREDICTIONS_TEXT['life_line'][val][1]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # 5 tinh cach
+                st.markdown('<div class="section-title">/ phan tich tinh cach</div>', unsafe_allow_html=True)
+                
+                personality_keys = ['huong_ngoai', 'lanh_dao', 'noi_tam', 'sang_tao', 'diem_tinh']
+                for key in personality_keys:
+                    val = results[key]
+                    st.markdown(f"""
+                    <div class="result-box">
+                        <div class="result-title">/ {DISPLAY_NAMES[key]}</div>
+                        <div class="result-content">{PREDICTIONS_TEXT[key][val][0]}</div>
+                        <div class="result-sub">{PREDICTIONS_TEXT[key][val][1]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Van may
+                st.markdown('<div class="section-title">/ van menh</div>', unsafe_allow_html=True)
+                val = results['fortune_class']
                 st.markdown(f"""
                 <div class="result-box">
-                    <div class="result-title">{DISPLAY_NAMES['heart_line']}</div>
-                    <div class="result-content">{PREDICTIONS_TEXT['heart_line'][val][0]}</div>
+                    <div class="result-title">/ {DISPLAY_NAMES['fortune_class']}</div>
+                    <div class="result-content">{PREDICTIONS_TEXT['fortune_class'][val][0]}</div>
+                    <div class="result-sub">{PREDICTIONS_TEXT['fortune_class'][val][1]}</div>
                 </div>
                 """, unsafe_allow_html=True)
-            
-            with col_b:
-                val = results['head_line']
-                st.markdown(f"""
-                <div class="result-box">
-                    <div class="result-title">{DISPLAY_NAMES['head_line']}</div>
-                    <div class="result-content">{PREDICTIONS_TEXT['head_line'][val][0]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col_c:
-                val = results['life_line']
-                st.markdown(f"""
-                <div class="result-box">
-                    <div class="result-title">{DISPLAY_NAMES['life_line']}</div>
-                    <div class="result-content">{PREDICTIONS_TEXT['life_line'][val][0]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Hiển thị 5 tính cách
-            st.markdown("---")
-            st.markdown('<p style="color:#c084fc; text-align:center; font-size:1rem;">🎭 PHÂN TÍCH TÍNH CÁCH</p>', unsafe_allow_html=True)
-            
-            personality_keys = ['huong_ngoai', 'lanh_dao', 'noi_tam', 'sang_tao', 'diem_tinh']
-            
-            for key in personality_keys:
-                val = results[key]
-                st.markdown(f"""
-                <div class="result-box">
-                    <div class="result-title">{DISPLAY_NAMES[key]}</div>
-                    <div class="result-content">{PREDICTIONS_TEXT[key][val][0]}</div>
-                    <div class="result-content" style="margin-top:8px; color:#c084fc80;">{PREDICTIONS_TEXT[key][val][1]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Vận may
-            st.markdown("---")
-            val = results['fortune_class']
-            st.markdown(f"""
-            <div class="result-box">
-                <div class="result-title">{DISPLAY_NAMES['fortune_class']}</div>
-                <div class="result-content">{PREDICTIONS_TEXT['fortune_class'][val][0]}</div>
-                <div class="result-content" style="margin-top:8px; color:#c084fc80;">{PREDICTIONS_TEXT['fortune_class'][val][1]}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-# Hướng dẫn
-st.markdown("""
-<div class="instruction-container">
-    <div class="instruction">
-        > chup anh long ban tay du anh sang, de trong khung hinh<span class="static-underscore">_</span><br>
-        > nhan phan tich - app tu dong phan tich 9 chi so<span class="static-underscore">_</span><br>
-        > doc ket qua giai ma ve tinh cach va van menh<span class="blinking-underscore">_</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
