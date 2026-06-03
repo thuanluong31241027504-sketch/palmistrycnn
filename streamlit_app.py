@@ -10,7 +10,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS (giữ nguyên của bạn)
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
@@ -91,17 +90,27 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Kiểm tra file model có tồn tại không
+MODEL_FILE = "palmistry.onnx"
+
+if not os.path.exists(MODEL_FILE):
+    st.error(f"❌ Không tìm thấy file {MODEL_FILE}")
+    st.info("Vui lòng upload file palmistry.onnx lên thư mục gốc của app")
+    st.stop()
+
 # Load model ONNX
 @st.cache_resource
 def load_model():
-    if os.path.exists("palmistry.onnx"):
-        return ort.InferenceSession("palmistry.onnx")
-    return None
+    try:
+        session = ort.InferenceSession(MODEL_FILE)
+        return session
+    except Exception as e:
+        st.error(f"Lỗi load model: {e}")
+        return None
 
 session = load_model()
 
 if session is None:
-    st.error("⚠️ model not found. Please upload palmistry.onnx")
     st.stop()
 
 # Lấy thông tin model
@@ -113,7 +122,12 @@ num_classes = session.get_outputs()[0].shape[1]
 # Class names (cập nhật theo model của bạn)
 CLASS_NAMES = [f"Class_{i}" for i in range(num_classes)]
 
-# Giao diện chính
+# Hiển thị thông tin model (debug)
+with st.expander("📋 Model Info"):
+    st.write(f"Input shape: {input_shape}")
+    st.write(f"Target size: {target_size}")
+    st.write(f"Number of classes: {num_classes}")
+
 st.markdown("""
 <div class="page-title">
     > palmistry analysis
@@ -130,6 +144,7 @@ if camera_image:
     
     if st.button("> analyze"):
         with st.spinner("processing..."):
+            # Xử lý ảnh
             if image.mode == 'RGBA':
                 image = image.convert('RGB')
             
@@ -137,6 +152,7 @@ if camera_image:
             img_array = np.array(img).astype(np.float32) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
             
+            # Dự đoán
             input_name = input_info.name
             predictions = session.run(None, {input_name: img_array})[0]
             
@@ -157,7 +173,6 @@ if camera_image:
                 prob = float(predictions[0][idx])
                 st.progress(prob, text=f"{i}. {CLASS_NAMES[idx]} - {prob:.2%}")
 
-# Hướng dẫn
 st.markdown("""
 <div class="instruction-container">
     <div class="instruction">
